@@ -12,6 +12,7 @@ from src.crm_core import (
     save_state,
     upsert_record,
 )
+from src.excel_io import export_section_to_xlsx, import_values_for_section
 
 
 class CRMCoreTest(unittest.TestCase):
@@ -32,6 +33,7 @@ class CRMCoreTest(unittest.TestCase):
         field = contacts["fields"][-1]
 
         self.assertEqual(field["name"], "VIP")
+        self.assertIn(field["id"], contacts["visibleFieldIds"])
         self.assertIs(contacts["records"][0]["values"][field["id"]], False)
 
     def test_record_can_be_created_and_required_fields_are_validated(self):
@@ -54,6 +56,21 @@ class CRMCoreTest(unittest.TestCase):
 
         self.assertFalse(any(field["id"] == "phone" for field in contacts["fields"]))
         self.assertNotIn("phone", contacts["records"][0]["values"])
+
+
+class ExcelImportExportTest(unittest.TestCase):
+    def test_section_can_be_exported_and_imported_as_xlsx(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = create_initial_state()
+            contacts = next(section for section in state["sections"] if section["id"] == "contacts")
+            path = Path(directory) / "contacts.xlsx"
+
+            export_section_to_xlsx(contacts, path)
+            imported = import_values_for_section(contacts, path)
+
+            self.assertTrue(path.exists())
+            self.assertEqual(imported[0]["fullName"], "Іван Петренко")
+            self.assertEqual(imported[0]["phone"], "+38 067 000 00 00")
 
 
 if __name__ == "__main__":

@@ -58,6 +58,7 @@ def create_initial_state() -> dict:
                     {"id": "email", "name": "Email", "type": "text", "required": False},
                     {"id": "nextContact", "name": "Наступний контакт", "type": "date", "required": False},
                 ],
+                "visibleFieldIds": ["fullName", "phone", "email"],
                 "records": [
                     {
                         "id": "contact_demo",
@@ -82,6 +83,7 @@ def create_initial_state() -> dict:
                     {"id": "stage", "name": "Етап", "type": "text", "required": False},
                     {"id": "closeDate", "name": "Дата закриття", "type": "date", "required": False},
                 ],
+                "visibleFieldIds": ["title", "amount", "stage"],
                 "records": [],
             },
         ],
@@ -104,6 +106,7 @@ def ensure_state_shape(state: dict | None) -> dict:
                 "name": section.get("name") or "Новий розділ",
                 "description": section.get("description") or "",
                 "fields": fields,
+                "visibleFieldIds": section.get("visibleFieldIds") or [field.get("id") for field in fields],
                 "records": records,
             }
         )
@@ -148,11 +151,13 @@ def add_section(state: dict, name: str, description: str = "") -> dict:
         raise ValueError("Назва розділу обовʼязкова")
 
     next_state = deepcopy(state)
+    title_field = {"id": create_id("field"), "name": "Назва", "type": "text", "required": True}
     section = {
         "id": create_id("section"),
         "name": trimmed_name,
         "description": description.strip(),
-        "fields": [{"id": create_id("field"), "name": "Назва", "type": "text", "required": True}],
+        "fields": [title_field],
+        "visibleFieldIds": [title_field["id"]],
         "records": [],
     }
     next_state["sections"].append(section)
@@ -171,6 +176,7 @@ def add_field(state: dict, section_id: str, name: str, field_type: str, required
     section = get_section(next_state, section_id)
     field = {"id": create_id("field"), "name": trimmed_name, "type": field_type, "required": bool(required)}
     section["fields"].append(field)
+    section.setdefault("visibleFieldIds", []).append(field["id"])
     for record in section["records"]:
         record.setdefault("values", {})[field["id"]] = default_value_for_type(field_type)
     return next_state
@@ -180,6 +186,7 @@ def remove_field(state: dict, section_id: str, field_id: str) -> dict:
     next_state = deepcopy(state)
     section = get_section(next_state, section_id)
     section["fields"] = [field for field in section["fields"] if field["id"] != field_id]
+    section["visibleFieldIds"] = [visible_id for visible_id in section.get("visibleFieldIds", []) if visible_id != field_id]
     for record in section["records"]:
         record.setdefault("values", {}).pop(field_id, None)
     return next_state
